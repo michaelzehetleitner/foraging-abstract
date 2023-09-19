@@ -76,10 +76,13 @@ aggE3 <-dataE3 %>%
 aggE3 <- aggE3 %>%
   mutate(remove = FALSE) %>%
   group_by(condition, patchQuality, travelTime) %>%
-  mutate(remove = patchLeavingTime %in% boxplot.stats(patchLeavingTime, coef = 2.0)$out) %>%
+  mutate(low_ex_thr = boxplot.stats(patchLeavingTime, coef = 2.0)$stats[1],
+         upp_ex_thr = boxplot.stats(patchLeavingTime, coef = 2.0)$stats[5],
+    remove = patchLeavingTime %in% boxplot.stats(patchLeavingTime, coef = 2.0)$out) %>%
   group_by(participant) %>% 
-  mutate(remove = any(remove)) %>% # remove all conditions from outliers
-  filter(!remove) %>%
+  mutate(remove = any(remove)) # remove all conditions from outliers
+filter(aggE3, remove)[,c("participant", "condition", "patchLeavingTime","low_ex_thr", "upp_ex_thr")]
+aggE3 <- aggE3 %>% filter(!remove) %>%
   ungroup()
 # sanity check
 table((aggE3 %>% group_by(participant) %>% summarise(N=n()))$N)
@@ -88,6 +91,7 @@ table((aggE3 %>% group_by(participant) %>% summarise(N=n()))$N)
 
 ###* Sample characteristics  ####
 sample_characteristics <- (dataE3 %>% 
+                             filter(participant %in% unique(aggE3$participant)) %>%
                              select(participant, age, sex, handedness, vision) %>% 
                              distinct() %>%
                              list(Gender=table(.$sex), 
@@ -191,7 +195,8 @@ pl_cond <- ggplot(descriptives)+
         axis.text = element_text(size=text_size))
 
 ###* Plot for deviation to optimal number of foraging actions ####
-descriptives$diffopt <- descriptives$patchLeavingTime - c(4,3,2)
+descriptives$opt <- c(4,3,2)
+descriptives$diffopt <- descriptives$patchLeavingTime - descriptives$opt
 optBF_labels <- lapply(list(bfTravel, bfBaseline, bfQuality), 
                        FUN= format_bfs, digits=2) %>%
   unlist()
@@ -232,7 +237,7 @@ paste("Hypothesis 3 (Long travel condition): ",format_bfs(bfTravel, 2), "; delta
       paste(names(posterior_deltaH3Travel), posterior_deltaH3Travel,sep="=",collapse=", "), sep="")
 paste("Hypothesis 3 (Baseline condition): ",format_bfs(bfBaseline, 2), "; delta: ",
       paste(names(posterior_deltaH3Baseline), posterior_deltaH3Baseline,sep="=",collapse=", "), sep="")
-paste("Hypothesis 3 (Low Quality condition): ", format_bfs(bfQuality, 2), "; delta: ",
+paste("Hypothesis 3 (High Quality condition): ", format_bfs(bfQuality, 2), "; delta: ",
       paste(names(posterior_deltaH3Quality), posterior_deltaH3Quality,sep="=",collapse=", "), sep="")
 
 
